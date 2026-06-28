@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>低音谱号大冒险 — 100关</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;font-family:'PingFang SC','Hiragino Sans GB',system-ui;overflow-x:hidden;color:#c8dfff}
+button{font-family:inherit;cursor:pointer}
+
+/* ── 玩家选择 ── */
+#player-bar{display:flex;gap:12px;align-items:center;justify-content:center;margin:6px 0}
+.player-btn{width:56px;height:56px;border-radius:50%;border:3px solid #2a4a7a;background:#0d1b2a;color:#5a8ac4;font-size:28px;font-weight:bold;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center}
+.player-btn:hover{transform:scale(1.08)}
+.player-btn.active{border-color:#ffd700;color:#ffd700;background:#1a3050;box-shadow:0 0 16px rgba(255,215,0,0.3)}
+#player-indicator{font-size:12px;color:#8ac4ff;text-align:center;margin-bottom:2px}
+#no-player-msg{color:#5a8ac4;font-size:15px;text-align:center;margin-top:40vh;display:none}
+
+/* ── 地图 ── */
+#map-wrap{width:100vw;min-height:100vh;padding:6px;text-align:center;display:flex;flex-direction:column;align-items:center}
+#map-wrap h1{font-size:22px;color:#ffd700;margin:4px 0}
+#map-canvas{width:100vw;height:calc(100vh - 130px);border-radius:4px}
+#map-bar{display:flex;gap:16px;align-items:center;margin:4px 0;font-size:13px}
+#map-bar span{color:#8ac4ff}
+#map-bar .gold{color:#ffd700;font-weight:bold}
+#shop-btn{padding:6px 16px;border:1px solid #ffd700;border-radius:8px;background:transparent;color:#ffd700;font-size:13px}
+#shop-btn:hover{background:rgba(255,215,0,0.15)}
+#shop-btn.locked{opacity:0.4;pointer-events:none;border-color:#4a4a4a;color:#4a4a4a}
+.map-legend{font-size:11px;color:#5a8ac4}
+
+/* ── 商店 ── */
+#shop-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:200;align-items:center;justify-content:center}
+#shop-box{background:#0d1b2a;border:2px solid #4a8ad4;border-radius:16px;padding:20px;max-width:400px;width:90%}
+#shop-box h2{color:#ffd700;text-align:center;margin-bottom:4px}
+#shop-box .gold-badge{text-align:center;color:#ffd700;font-size:18px;margin-bottom:12px}
+.shop-item{display:flex;align-items:center;gap:10px;padding:10px;margin:6px 0;border:1px solid #2a4a7a;border-radius:10px;background:#111d2e}
+.shop-item .icon{font-size:28px;min-width:36px;text-align:center}
+.shop-item .info{flex:1}
+.shop-item .info .name{font-weight:bold;color:#c8dfff;font-size:14px}
+.shop-item .info .desc{font-size:11px;color:#5a8ac4;margin-top:2px}
+.shop-item .info .owned{font-size:11px;color:#8ac4ff}
+.shop-item .buy-btn{padding:6px 14px;border:none;border-radius:8px;font-size:13px;font-weight:bold}
+.shop-item .buy-btn.affordable{background:#4a8ad4;color:#fff}
+.shop-item .buy-btn.poor{background:#2a3a50;color:#5a8ac4;cursor:not-allowed}
+#shop-close{margin-top:12px;width:100%;padding:8px;border:1px solid #4a8ad4;border-radius:8px;background:transparent;color:#8ac4ff;font-size:14px}
+
+/* ── 游戏 ── */
+#game-scene{display:none;flex-direction:column;align-items:center;padding:4px}
+#game-canvas-wrap{position:relative;width:100%;max-width:500px;max-height:45vh;aspect-ratio:4/3;background:linear-gradient(180deg,#0d1b2a 0%,#1b2838 100%);border:2px solid #2a4a7a;border-radius:16px;overflow:hidden}
+#gc{display:block;width:100%;height:100%;touch-action:manipulation}
+#timer-bar{width:100%;max-width:500px;height:6px;background:#1a3050;border-radius:3px;margin-top:4px;overflow:hidden}
+#timer-fill{height:100%;background:linear-gradient(90deg,#2ecc71,#f1c40f,#e74c3c);border-radius:3px;transition:width 0.3s linear}
+#bomb-timer{display:none;width:100%;max-width:500px;text-align:center;margin-top:2px;font-size:14px;font-weight:bold;color:#e74c3c}
+#bomb-timer .bt-num{font-size:24px;animation:bombPulse 0.5s ease-in-out infinite}
+@keyframes bombPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
+#item-bar{display:flex;gap:8px;width:100%;max-width:500px;justify-content:center;margin-top:4px}
+.item-btn{padding:6px 12px;border:1px solid #4a8ad4;border-radius:8px;background:#0d1b2a;color:#8ac4ff;font-size:12px;font-weight:bold;display:flex;align-items:center;gap:4px}
+.item-btn:disabled{opacity:0.35;pointer-events:none}
+.item-btn .count{font-size:10px;color:#5a8ac4}
+.item-btn.shield{border-color:#4dabf7;color:#4dabf7}
+.item-btn.jetpack{border-color:#ffd700;color:#ffd700}
+.item-btn.firework{border-color:#e74c3c;color:#e74c3c}
+#btns{display:flex;flex-direction:column;gap:4px;margin-top:4px;width:100%;max-width:500px}
+.btn-row{display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
+.btn{flex:1;min-width:42px;padding:12px 4px;border:2px solid #4a8ad4;border-radius:10px;background:#0d1b2a;color:#8ac4ff;font-size:16px;font-weight:bold;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:all 0.1s;text-align:center}
+.btn:active,.btn.pressed{background:#4a8ad4;color:#fff;transform:scale(0.94)}
+.btn.correct{background:#2ecc71!important;border-color:#2ecc71!important}
+.btn.wrong{background:#e74c3c!important;border-color:#e74c3c!important}
+.btn.locked{opacity:0.3;pointer-events:none;border-color:#1a3050;color:#3a5070}
+.btn .oct{font-size:10px;display:block;color:inherit;opacity:0.7}
+#game-hud{display:flex;gap:14px;margin-top:4px;font-size:14px;font-weight:bold}
+#game-hud span{color:#8ac4ff}
+#back-btn{margin-top:4px;padding:6px 20px;border:1px solid #4a8ad4;border-radius:8px;background:transparent;color:#8ac4ff;font-size:13px}
+
+/* ── 结算 ── */
+#result-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);z-index:100;align-items:center;justify-content:center}
+#result-box{background:#0d1b2a;border:2px solid #4a8ad4;border-radius:16px;padding:24px;text-align:center;min-width:280px}
+#result-box h2{font-size:24px;margin-bottom:6px}
+#result-box .big-stars{font-size:44px;margin:10px 0}
+#result-box .stat{color:#8ac4ff;font-size:13px;margin:3px 0}
+#result-box .gold-earned{color:#ffd700;font-size:16px;font-weight:bold;margin-top:8px}
+#result-box button{margin-top:14px;padding:10px 28px;border:none;border-radius:10px;background:#4a8ad4;color:#fff;font-size:15px;font-weight:bold}
+.combo-pop{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font-size:40px;font-weight:bold;color:#f1c40f;text-shadow:0 0 20px #f39c12;pointer-events:none;animation:popUp 1s ease-out forwards;z-index:10}
+@keyframes popUp{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-120%) scale(1.8)}}
+.hint-arrow{position:absolute;color:#ffd700;font-size:24px;font-weight:bold;animation:blink 0.4s ease-in-out 3;pointer-events:none;z-index:9}
+@keyframes blink{0%,100%{opacity:0}50%{opacity:1}}
+.fighter-jet{position:absolute;font-size:30px;pointer-events:none;z-index:11;animation:flyBy 1.5s ease-in-out forwards}
+@keyframes flyBy{0%{left:-60px}60%{left:calc(100% + 40px)}100%{left:calc(100% + 80px)}}
+</style>
+</head>
+<body>
+
+<div id="map-wrap">
+  <div id="player-bar">
+    <button class="player-btn" id="pbtn-S" onclick="selectPlayer('S')">S</button>
+    <button class="player-btn" id="pbtn-B" onclick="selectPlayer('B')">B</button>
+  </div>
+  <div id="player-indicator"></div>
+  <h1>🗺️ 低音谱号大冒险</h1>
+  <div id="map-bar">
+    <span class="gold">🪙 <span id="gold-display">0</span></span>
+    <button id="shop-btn" onclick="openShop()">🏪 道具商城</button>
+  </div>
+  <canvas id="map-canvas"></canvas>
+  <div class="map-legend">🔒未解锁 ⭐一星 ⭐⭐二星 ⭐⭐⭐三星 ｜ 点击关卡开始！</div>
+  <div id="no-player-msg">👆 先点 S 或 B 选择你的账号</div>
+  <button style="position:fixed;bottom:8px;right:8px;padding:4px 8px;border:1px solid #333;border-radius:6px;background:transparent;color:#333;font-size:10px;z-index:50" onclick="unlockAll()">🔓</button>
+</div>
+
+<div id="shop-overlay">
+  <div id="shop-box">
+    <h2>🏪 道具商城</h2>
+    <div class="gold-badge">🪙 <span id="shop-gold">0</span></div>
+    <div class="shop-item"><div class="icon">🛡️</div><div class="info"><div class="name">防护罩</div><div class="desc">抵御一次炸弹爆炸</div><div class="owned">拥有: <span id="inv-shield">0</span></div></div><button class="buy-btn" id="buy-shield" onclick="buyItem('shield')">🪙50</button></div>
+    <div class="shop-item"><div class="icon">🎒</div><div class="info"><div class="name">喷气背包</div><div class="desc">显示正确音符位置</div><div class="owned">拥有: <span id="inv-jetpack">0</span></div></div><button class="buy-btn" id="buy-jetpack" onclick="buyItem('jetpack')">🪙80</button></div>
+    <div class="shop-item"><div class="icon">🎆</div><div class="info"><div class="name">烟花节日</div><div class="desc">战斗机清屏+烟花+三星</div><div class="owned">拥有: <span id="inv-firework">0</span></div></div><button class="buy-btn" id="buy-firework" onclick="buyItem('firework')">🪙300</button></div>
+    <button id="shop-close" onclick="closeShop()">关闭</button>
+  </div>
+</div>
+
+<div id="game-scene">
+  <div style="font-size:15px;font-weight:bold;color:#ffd700;margin-bottom:2px" id="lv-label">第 1 关</div>
+  <div style="font-size:11px;color:#5a8ac4;margin-bottom:2px" id="lv-note-range"></div>
+  <div id="game-canvas-wrap"><canvas id="gc"></canvas></div>
+  <div id="timer-bar"><div id="timer-fill" style="width:100%"></div></div>
+  <div id="bomb-timer">💣 <span class="bt-num" id="bt-sec">3</span> 秒</div>
+  <div id="item-bar">
+    <button class="item-btn shield" id="item-shield" onclick="useItem('shield')">🛡️ <span class="count">x<span id="cnt-shield">0</span></span></button>
+    <button class="item-btn jetpack" id="item-jetpack" onclick="useItem('jetpack')">🎒 <span class="count">x<span id="cnt-jetpack">0</span></span></button>
+    <button class="item-btn firework" id="item-firework" onclick="useItem('firework')">🎆 <span class="count">x<span id="cnt-firework">0</span></span></button>
+  </div>
+  <div id="btns"></div>
+  <div id="game-hud">
+    <span>🎯<span id="hits">0</span></span><span>💨<span id="misses">0</span></span><span>🔥<span id="combo">0</span></span>
+  </div>
+  <button id="back-btn" onclick="quitGame()">← 返回地图</button>
+</div>
+
+<div id="result-overlay">
+  <div id="result-box">
+    <h2 id="result-title"></h2><div class="big-stars" id="result-stars"></div>
+    <div class="stat">🎯 命中 <span id="res-hits">0</span></div>
+    <div class="stat">💨 漏掉 <span id="res-misses">0</span></div>
+    <div class="stat">🔥 最大连击 <span id="res-maxcombo">0</span></div>
+    <div class="stat">🔢 命中率 <span id="res-rate">0%</span></div>
+    <div class="gold-earned" id="res-gold"></div>
+    <button onclick="closeResult()">继续</button>
+  </div>
+</div>
+
+<script>
+// ═══════════ 16音符系统 (数字编号) ═══════════
+// 低音谱号从下往上编号: 下加二线=-1 → 上加一间=+2
+// 线: 1底(G2) 2(B2) 3(D3) 4(F3) 5顶(A3)  间: C3 E3 G3 (B3在五线上方)
+const NOTES=[
+  {id:'-1',yu:-1,freq:65.41},   // C2 下加二线 ←重点
+  {id:'-2',yu:-0.5,freq:73.42}, // D2 下加二间
+  {id:'-3',yu:0,freq:82.41},    // E2 下加一线
+  {id:'-4',yu:0.5,freq:87.31},  // F2 下加一间 ←重点
+  {id:'-5',yu:1,freq:98.00},    // G2 第一线(底)
+  {id:'-6',yu:1.5,freq:110.00}, // A2 第一间
+  {id:'-7',yu:2,freq:123.47},   // B2 第二线
+  {id:'1',yu:2.5,freq:130.81},  // C3 第二间(Do)
+  {id:'2',yu:3,freq:146.83},    // D3 第三线(Re) ←重点
+  {id:'3',yu:3.5,freq:164.81},  // E3 第三间(Mi)
+  {id:'4',yu:4,freq:174.61},    // F3 第四线(Fa)
+  {id:'5',yu:4.5,freq:196.00},  // G3 第四间(Sol)
+  {id:'6',yu:5,freq:220.00},    // A3 第五线(La) ←重点
+  {id:'7',yu:5.5,freq:246.94},  // B3 第五线上方(Si)
+  {id:'+1',yu:6,freq:261.63},   // C4 上加一线(中央C)
+  {id:'+2',yu:6.5,freq:293.66}, // D4 上加一间
+];
+const TOTAL_LV=100, GAME_SEC=60;
+
+function notePool(lv){
+  if(lv<=10) return [7,8,9,10];           // C3 D3 E3 F3
+  if(lv<=20) return [7,8,9,10,11,12];     // +G3 A3
+  else if(lv<=30) return [7,8,9,10,11,12,13]; // +B3
+  else if(lv<=40) return [0,1,2,3,4,5,6, 7,8,9,10,11,12,13]; // +下加两线 C2-G2
+  else if(lv<=50) return [0,1,2,3,4,5,6, 7,8,9,10,11,12,13, 14]; // +上加一线 C4
+  return [0,1,2,3,4,5,6, 7,8,9,10,11,12,13, 14,15]; // +上加一间 D4
+}
+function notePoolLabel(lv){
+  if(lv<=10) return '中音 1 2 3 4';
+  if(lv<=20) return '中音 1~6';
+  else if(lv<=30) return '中音全7音 1~7';
+  else if(lv<=40) return '+ 下加两线~一线 -1~-7';
+  else if(lv<=50) return '+ 上加一线 +1';
+  if(lv<=60)return '全16音 -1~+2';
+  return '全16音 (重点-1/-4/2/6)';
+}
+function planeSpeed(lv){
+  if(lv<=10)return 0.8+(lv-1)*0.08;if(lv<=20)return 1.5+(lv-11)*0.08;
+  if(lv<=30)return 2.3+(lv-21)*0.07;if(lv<=50)return 3.0+(lv-31)*0.05;
+  if(lv<=80)return 4.0+(lv-51)*0.03;return 5.0+(lv-81)*0.06;
+}
+function spawnInterval(lv){
+  if(lv<=10)return 130;if(lv<=20)return 110;if(lv<=30)return 90;
+  if(lv<=50)return 75;if(lv<=80)return 55;return Math.max(28,55-(lv-81)*1.5);
+}
+function bombChance(lv){if(lv<=20)return 0.15;if(lv<=50)return 0.3;if(lv<=80)return 0.45;return 0.6;}
+function hasBombTimer(lv){return lv>=50;}
+function bombTimeLimit(lv){return lv>=50?3:0;}
+function rewardGold(lv,stars){
+  if(stars<3)return 0;if(lv<=10)return 5;if(lv<=20)return 8;if(lv<=30)return 12;
+  if(lv<=50)return 18;if(lv<=80)return 25;return 35;
+}
+const ITEM_PRICES={shield:50,jetpack:80,firework:300};
+
+// ═══════════ 存档 ═══════════
+let currentPlayer=null;
+let progress={},gold=0,inventory={shield:0,jetpack:0,firework:0};
+function storageKey(){return 'bass_clef_'+currentPlayer;}
+function loadP(){
+  if(!currentPlayer){progress={};gold=0;inventory={shield:0,jetpack:0,firework:0};return;}
+  try{const t=JSON.parse(localStorage.getItem(storageKey())||'{}');progress=t.p||{};gold=t.g||0;inventory=t.i||{shield:0,jetpack:0,firework:0};}catch(e){}
+  if(!progress[1])progress[1]=-1;
+}
+function saveP(){if(!currentPlayer)return;localStorage.setItem(storageKey(),JSON.stringify({p:progress,g:gold,i:inventory}));}
+function selectPlayer(p){
+  currentPlayer=p;loadP();
+  document.getElementById('pbtn-S').className='player-btn'+(p==='S'?' active':'');
+  document.getElementById('pbtn-B').className='player-btn'+(p==='B'?' active':'');
+  document.getElementById('player-indicator').textContent='当前: '+p+' ｜ 🪙 '+gold;
+  document.getElementById('no-player-msg').style.display='none';
+  document.getElementById('map-canvas').style.display='';
+  document.getElementById('map-bar').style.display='';
+  document.getElementsByClassName('map-legend')[0].style.display='';
+  drawMap();
+}
+function unlockNext(lv){const n=lv+1;if(n<=TOTAL_LV&&!(n in progress)){progress[n]=-1;saveP();}}
+
+// ═══════════ 地图 ═══════════
+const mcv=document.getElementById('map-canvas'),mctx=mcv.getContext('2d');let mW,mH;
+function sizeMap(){mW=mcv.clientWidth;mH=mcv.clientHeight;if(mW<400)mW=400;if(mH<300)mH=300;mcv.width=mW*(window.devicePixelRatio||1);mcv.height=mH*(window.devicePixelRatio||1);mctx.setTransform(1,0,0,1,0,0);mctx.scale(window.devicePixelRatio||1,window.devicePixelRatio||1);}
+function drawTrophy(x,y,r,state,lvNum){
+  const s=state;
+  if(s===-1){const g=mctx.createRadialGradient(x,y,r*0.3,x,y,r*1.5);g.addColorStop(0,'rgba(255,215,0,0.4)');g.addColorStop(1,'rgba(255,215,0,0)');mctx.fillStyle=g;mctx.beginPath();mctx.arc(x,y,r*1.5,0,Math.PI*2);mctx.fill();}
+  const cW=r*0.7,cH=r*1.1;let grad=mctx.createLinearGradient(x,y-cH,x,y+cH);
+  if(s===3){grad.addColorStop(0,'#ffd700');grad.addColorStop(1,'#b8860b');}else if(s===2){grad.addColorStop(0,'#c0c0c0');grad.addColorStop(1,'#708090');}else if(s===1){grad.addColorStop(0,'#cd7f32');grad.addColorStop(1,'#8b4513');}else if(s===-1){grad.addColorStop(0,'#4a8ad4');grad.addColorStop(1,'#1a3a60');}else{grad.addColorStop(0,'#2a3a50');grad.addColorStop(1,'#1a1a2e');}
+  mctx.fillStyle=grad;mctx.beginPath();mctx.moveTo(x-cW,y-cH*0.8);mctx.lineTo(x-cW*0.8,y);mctx.quadraticCurveTo(x,y+cH*0.3,x+cW*0.8,y);mctx.lineTo(x+cW,y-cH*0.8);mctx.closePath();mctx.fill();
+  mctx.fillStyle=s>0?'#ffd700':s===-1?'#5a9adf':'#3a4a60';mctx.fillRect(x-cW*1.15,y-cH*0.8,cW*2.3,cH*0.2);
+  mctx.strokeStyle=s>0?'#ffd700':s===-1?'#4a8ad4':'#3a4a60';mctx.lineWidth=r*0.15;mctx.beginPath();mctx.arc(x-cW*1.05,y,r*0.35,Math.PI*0.5,Math.PI*1.5);mctx.stroke();mctx.beginPath();mctx.arc(x+cW*1.05,y,r*0.35,-Math.PI*0.5,Math.PI*0.5);mctx.stroke();
+  mctx.fillStyle=s>0?'#ffd700':s===-1?'#4a8ad4':'#3a4a60';mctx.fillRect(x-cW*0.6,y+cH*0.25,cW*1.2,cH*0.15);mctx.fillRect(x-cW*0.9,y+cH*0.4,cW*1.8,cH*0.12);
+  if(s>0){const st='⭐⭐⭐'.slice(0,s*2);mctx.fillStyle='#fff';mctx.font=`bold ${r*0.4}px sans-serif`;mctx.textAlign='center';mctx.textBaseline='middle';mctx.fillText(st,x,y-cH*0.15);mctx.font=`${r*0.25}px sans-serif`;mctx.fillStyle='#fff8dc';mctx.fillText('Lv.'+lvNum,x,y+cH*0.1);}else{mctx.fillStyle='#c8dfff';mctx.font=`bold ${r*0.4}px sans-serif`;mctx.textAlign='center';mctx.textBaseline='middle';mctx.fillText(lvNum,x,y-cH*0.1);}
+}
+function drawMap(){
+  sizeMap();mctx.clearRect(0,0,mW,mH);loadP();
+  for(let i=0;i<40;i++){mctx.fillStyle='rgba(255,255,255,'+(0.02+Math.random()*0.04)+')';mctx.beginPath();mctx.arc(Math.random()*mW,Math.random()*mH,1,0,Math.PI*2);mctx.fill();}
+  const COLS=10,ROWS=10,padX=mW*0.06,padY=mH*0.08,cellW=(mW-padX*2)/(COLS-1),cellH=(mH-padY*2)/(ROWS-1),r=Math.min(cellW,cellH)*0.38,nodes=[];
+  for(let row=0;row<ROWS;row++)for(let col=0;col<COLS;col++){const idx=row%2===0?row*COLS+col:row*COLS+(COLS-1-col);nodes.push({lv:idx+1,x:padX+col*cellW,y:padY+row*cellH});}
+  nodes.sort((a,b)=>a.lv-b.lv);mctx.strokeStyle='rgba(200,180,140,0.25)';mctx.lineWidth=Math.max(1,r*0.12);mctx.setLineDash([r*0.3,r*0.2]);mctx.beginPath();mctx.moveTo(nodes[0].x,nodes[0].y);
+  for(let i=1;i<nodes.length;i++){if(i%COLS===0){const p=nodes[i-1],c=nodes[i],mY=(p.y+c.y)/2;mctx.lineTo(p.x,mY);mctx.lineTo(c.x,mY);}mctx.lineTo(nodes[i].x,nodes[i].y);}mctx.stroke();mctx.setLineDash([]);
+
+  // 新手村: 路径起点上方, 小屋图标
+  const vx=nodes[0].x, vy=nodes[0].y-r*3.5;
+  // 光晕
+  const glowGrd=mctx.createRadialGradient(vx,vy,r*0.5,vx,vy,r*2.2);
+  glowGrd.addColorStop(0,'rgba(255,200,100,0.6)');glowGrd.addColorStop(0.5,'rgba(255,150,50,0.2)');glowGrd.addColorStop(1,'rgba(255,100,0,0)');
+  mctx.fillStyle=glowGrd;mctx.beginPath();mctx.arc(vx,vy,r*2.2,0,Math.PI*2);mctx.fill();
+  // 连线到第一关
+  mctx.strokeStyle='rgba(255,200,100,0.3)';mctx.lineWidth=r*0.15;mctx.setLineDash([r*0.15,r*0.1]);
+  mctx.beginPath();mctx.moveTo(vx,vy+r*1.5);mctx.lineTo(nodes[0].x,nodes[0].y-r);mctx.stroke();mctx.setLineDash([]);
+  // 小屋
+  mctx.fillStyle='#8B4513';mctx.fillRect(vx-r*1.2,vy-r*0.3,r*2.4,r*1.8);
+  mctx.fillStyle='#A0522D';mctx.beginPath();mctx.moveTo(vx-r*1.5,vy-r*0.3);mctx.lineTo(vx,vy-r*1.5);mctx.lineTo(vx+r*1.5,vy-r*0.3);mctx.closePath();mctx.fill();
+  mctx.fillStyle='#FFE4B5';mctx.fillRect(vx-r*0.4,vy+r*0.3,r*0.8,r*1.2);
+  mctx.fillStyle='#FFD700';mctx.font=`bold ${r*0.5}px sans-serif`;mctx.textAlign='center';mctx.fillText('🏘️',vx,vy+r*0.8);
+  mctx.fillStyle='#fff';mctx.font=`bold ${r*0.38}px sans-serif`;
+  mctx.fillText('新手村',vx,vy-r*1.8);
+  // 高亮脉冲文字
+  mctx.fillStyle='#ffd700';mctx.font=`${r*0.32}px sans-serif`;
+  mctx.fillText('点击进入',vx,vy+r*2.5);
+
+  // 常规关卡
+  for(const n of nodes){const s=progress[n.lv]||0;drawTrophy(n.x,n.y,r,s,n.lv);}
+  mcv._nodes=nodes;mcv._r=r;
+  // 新手村点击区
+  mcv._village={x:vx,y:vy,r:r*1.5};
+  document.getElementById('gold-display').textContent=gold;
+  document.getElementById('player-indicator').textContent=currentPlayer?'当前: '+currentPlayer+' ｜ 🪙 '+gold:'';
+  document.getElementById('shop-btn').className='shop-btn'+(getMaxUnlocked()>=60?'':' locked');
+  if(getMaxUnlocked()<60)document.getElementById('shop-btn').textContent='🔒 60关解锁';else document.getElementById('shop-btn').textContent='🏪 道具商城';
+}
+function getMaxUnlocked(){let m=1;for(const[k,v]of Object.entries(progress)){if(v===-1||v>0)m=Math.max(m,parseInt(k));}return m;}
+function unlockAll(){
+  for(let i=1;i<=TOTAL_LV;i++) progress[i]=-1;
+  gold=9999;inventory={shield:10,jetpack:10,firework:5};
+  saveP();drawMap();
+}
+mcv.addEventListener('click',e=>{
+  if(!currentPlayer)return;
+  const rect=mcv.getBoundingClientRect(),sx=mW/rect.width,sy=mH/rect.height,mx=(e.clientX-rect.left)*sx,my=(e.clientY-rect.top)*sy;
+  // 新手村检测
+  const v=mcv._village;
+  if(v){const dvx=mx-v.x,dvy=my-v.y;if(dvx*dvx+dvy*dvy<v.r*v.r){startTutorial();return;}}
+  const nodes=mcv._nodes||[],r=mcv._r||20;
+  for(const n of nodes){const dx=mx-n.x,dy=my-n.y;if(dx*dx+dy*dy<r*r*1.5){const s=progress[n.lv]||0;if(s===0)return;startLevel(n.lv);return;}}
+});
+
+// ═══════════ 商店 ═══════════
+function openShop(){if(!currentPlayer)return;loadP();document.getElementById('shop-overlay').style.display='flex';updateShopUI();}
+function closeShop(){document.getElementById('shop-overlay').style.display='none';drawMap();}
+function updateShopUI(){document.getElementById('shop-gold').textContent=gold;document.getElementById('inv-shield').textContent=inventory.shield;document.getElementById('inv-jetpack').textContent=inventory.jetpack;document.getElementById('inv-firework').textContent=inventory.firework;for(const[k,v]of Object.entries(ITEM_PRICES)){const btn=document.getElementById('buy-'+k);btn.textContent='🪙'+v;btn.className='buy-btn '+(gold>=v?'affordable':'poor');btn.disabled=gold<v;}}
+function buyItem(type){const p=ITEM_PRICES[type];if(gold<p)return;gold-=p;inventory[type]=(inventory[type]||0)+1;saveP();updateShopUI();}
+
+// ═══════════ 游戏 Canvas ═══════════
+const gcv=document.getElementById('gc'),gctx=gcv.getContext('2d');let GW,GH;
+function resizeG(){const w=document.getElementById('game-canvas-wrap');GW=w.clientWidth;GH=w.clientHeight;gcv.width=GW*(window.devicePixelRatio||1);gcv.height=GH*(window.devicePixelRatio||1);gctx.setTransform(1,0,0,1,0,0);gctx.scale(window.devicePixelRatio||1,window.devicePixelRatio||1);}
+
+// ═══════════ 音频 ═══════════
+let aCtx=null;function iAudio(){if(!aCtx)aCtx=new(window.AudioContext||window.webkitAudioContext)();if(aCtx&&aCtx.state==='suspended')aCtx.resume();}
+function playTone(f,d=0.3,t='triangle'){if(!aCtx){iAudio();if(!aCtx)return;}if(aCtx.state==='suspended')aCtx.resume();const o=aCtx.createOscillator(),g=aCtx.createGain();o.type=t;o.frequency.value=f;const boost=Math.max(1,5.0-f*0.02);g.gain.setValueAtTime(0.3*boost,aCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,aCtx.currentTime+d);o.connect(g);g.connect(aCtx.destination);o.start();o.stop(aCtx.currentTime+d);}
+function playCombo(n){for(let i=0;i<n;i++)setTimeout(()=>playTone(NOTES[7+(i%7)].freq,0.1),i*60);}
+
+// ═══════════ 绘制 ═══════════
+// yu: 1=底线, 5=顶线. nY映射到canvas Y
+function nY(yu){const t=GH*0.33,h=GH*0.26;return t+(5-yu)*(h/4);}
+function drawStaff(){
+  const m=40,t=GH*0.33,h=GH*0.26,ls=h/4;
+  gctx.strokeStyle='rgba(200,220,255,0.5)';gctx.lineWidth=1;
+  for(let i=0;i<5;i++){const y=t+i*ls;gctx.beginPath();gctx.moveTo(m,y);gctx.lineTo(GW-m,y);gctx.stroke();}
+  // 加线: 下加二线(yu=-1→下加一线yu=0→上加一线yu=6)
+  for(let yu=-1;yu<=6;yu++){if(yu>=1&&yu<=5)continue;const y=nY(yu);if(y>0&&y<GH){gctx.strokeStyle='rgba(200,220,255,0.2)';gctx.lineWidth=0.5;gctx.beginPath();gctx.moveTo(GW*0.35,y);gctx.lineTo(GW*0.65,y);gctx.stroke();}}
+  gctx.fillStyle='rgba(200,220,255,0.4)';gctx.font='50px serif';gctx.fillText('𝄢',m-5,t+h*0.65+12);
+}
+function drawPlane(x,y,tilt=0){
+  gctx.save();gctx.translate(x,y);gctx.rotate(tilt);
+  gctx.fillStyle='#7ec8e3';gctx.beginPath();gctx.ellipse(0,0,25,8,0,0,Math.PI*2);gctx.fill();
+  gctx.fillStyle='#a0d8ef';gctx.beginPath();gctx.moveTo(25,0);gctx.lineTo(35,-5);gctx.lineTo(35,5);gctx.closePath();gctx.fill();
+  gctx.fillStyle='#5a9fbf';gctx.beginPath();gctx.moveTo(-20,-3);gctx.lineTo(-30,-12);gctx.lineTo(-14,-3);gctx.fill();gctx.beginPath();gctx.moveTo(-20,3);gctx.lineTo(-30,12);gctx.lineTo(-14,3);gctx.fill();
+  gctx.beginPath();gctx.moveTo(-5,-8);gctx.lineTo(-15,-18);gctx.lineTo(5,-8);gctx.fill();gctx.beginPath();gctx.moveTo(-5,8);gctx.lineTo(-15,18);gctx.lineTo(5,8);gctx.fill();
+  const a=fc*0.6;gctx.strokeStyle='#333';gctx.lineWidth=2;gctx.beginPath();gctx.moveTo(35,0);gctx.lineTo(35+12*Math.cos(a),12*Math.sin(a));gctx.stroke();gctx.beginPath();gctx.moveTo(35,0);gctx.lineTo(35-12*Math.cos(a),-12*Math.sin(a));gctx.stroke();
+  gctx.fillStyle='#ffd700';gctx.beginPath();gctx.ellipse(-5,0,6,4.5,-0.3,0,Math.PI*2);gctx.fill();gctx.strokeStyle='#b8860b';gctx.lineWidth=1;gctx.beginPath();gctx.ellipse(-5,0,6,4.5,-0.3,0,Math.PI*2);gctx.stroke();
+  gctx.restore();
+}
+function drawBomb(x,y){gctx.save();gctx.fillStyle='#333';gctx.beginPath();gctx.arc(x,y,11,0,Math.PI*2);gctx.fill();gctx.fillStyle='#e74c3c';gctx.beginPath();gctx.arc(x,y,9,0,Math.PI*2);gctx.fill();gctx.fillStyle='#fff';gctx.font='12px sans-serif';gctx.textAlign='center';gctx.textBaseline='middle';gctx.fillText('💣',x,y);gctx.restore();}
+function drawPts(){pts=pts.filter(p=>p.life>0);for(const p of pts){gctx.save();gctx.globalAlpha=p.life;gctx.fillStyle=p.color;gctx.beginPath();gctx.arc(p.x,p.y,p.r,0,Math.PI*2);gctx.fill();gctx.restore();p.x+=p.vx;p.y+=p.vy;p.life-=0.04;}}
+function explode(x,y,color,n=15){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=2+Math.random()*4;pts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,r:2+Math.random()*3,color,life:1});}}
+function fireworkExplode(x,y){for(let i=0;i<40;i++){const a=Math.random()*Math.PI*2,s=3+Math.random()*6;pts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,r:3+Math.random()*4,color:'#'+['ff6b6b','ffd43b','69db7c','4dabf7','da77f2','ffa94d'][Math.floor(Math.random()*6)],life:1.5});}}
+function popup(txt){const el=document.createElement('div');el.className='combo-pop';el.textContent=txt;document.getElementById('game-canvas-wrap').appendChild(el);setTimeout(()=>el.remove(),1000);}
+
+// ═══════════ 新手村教程 ═══════════
+let tutPhase=0, tutIndex=0, tutTimer=0, tutPool, inTutorial=false;
+function startTutorial(){
+  document.getElementById('map-wrap').style.display='none';
+  document.getElementById('game-scene').style.display='flex';
+  document.getElementById('lv-label').textContent='🏘️ 新手村';
+  document.getElementById('lv-note-range').textContent='入门教学 · 约3分钟';
+  resizeG();iAudio();
+  if(aCtx&&aCtx.state==='suspended')aCtx.resume();
+  tutPhase=0;tutIndex=0;tutTimer=0;inTutorial=true;
+  tutPool=[7,8,9,10]; // 先教中音1-4(Do Re Mi Fa)
+  // 建4个按钮
+  buildButtons(tutPool);
+  document.getElementById('item-bar').style.display='none';
+  gameOver=false;hits=0;misses=0;combo=0;fc=0;plane=null;bombs=[];pts=[];shieldActive=false;fireworkActive=false;
+  updateHUD();
+  document.getElementById('timer-fill').style.width='100%';
+  document.getElementById('bomb-timer').style.display='none';
+  requestAnimationFrame(tutLoop);
+}
+
+function tutTutorialOverlay(text,sub){
+  // 在canvas上显示教学文字
+}
+
+function tutLoop(){
+  fc++;
+  if(tutPhase===0){tutDemoPhase();}
+  else if(tutPhase===1){tutPracticePhase();}
+  else if(tutPhase===2){tutBombPhase();}
+  else{tutFinish();return;}
+  
+  // 绘制
+  gctx.clearRect(0,0,GW,GH);
+  if(tutPhase===0||tutPhase===2){
+    drawStaff();
+    if(curNote>=0){
+      const ny=nY(NOTES[curNote].yu);
+      // 大音符
+      gctx.fillStyle='#ffd700';gctx.beginPath();gctx.ellipse(GW/2,ny,12,9,-0.3,0,Math.PI*2);gctx.fill();
+      gctx.strokeStyle='#b8860b';gctx.lineWidth=2;gctx.beginPath();gctx.ellipse(GW/2,ny,12,9,-0.3,0,Math.PI*2);gctx.stroke();
+      gctx.strokeStyle='#ffd700';gctx.lineWidth=2;
+      gctx.beginPath();gctx.moveTo(GW/2+10,ny-3);gctx.lineTo(GW/2+10,ny-43);gctx.stroke();
+      // 箭头指向下方按钮
+      gctx.fillStyle='rgba(255,215,0,0.5)';gctx.font='30px sans-serif';gctx.textAlign='center';
+      gctx.fillText('⬇',GW/2,ny+35);
+    }
+    drawPts();
+  }else{drawStaff();for(const b of bombs){if(b.alive)drawBomb(b.x,b.y);}if(plane&&plane.alive)drawPlane(plane.x,plane.y,plane.tilt);drawPts();}
+
+  // 教学文字覆盖
+  gctx.fillStyle='rgba(0,0,0,0.5)';gctx.fillRect(0,0,GW,GH*0.15);
+  gctx.fillStyle='#ffd700';gctx.font='bold 14px sans-serif';gctx.textAlign='center';
+  const msgs={
+    demo:'认音符! 看五线谱→找到对应数字按钮',practice:'试一下! 看到哪个音符就点对应数字',
+    bomb:'小心💣! 炸弹也会出现,别点它'
+  };
+  const keys=['demo','practice','bomb'];
+  gctx.fillText(msgs[keys[tutPhase]]||'',GW/2,GH*0.09);
+
+  if(tutPhase<3)requestAnimationFrame(tutLoop);
+}
+
+function tutDemoPhase(){
+  if(tutTimer<=0){
+    // 显示当前音符
+    curNote=tutPool[tutIndex%tutPool.length];
+    playTone(NOTES[curNote].freq,0.6,'triangle');
+    tutTimer=140; // ~2.3秒
+    // 高亮按钮
+    document.querySelectorAll('.btn').forEach(b=>{
+      b.classList.remove('correct');
+      if(parseInt(b.dataset.note)===curNote)b.classList.add('correct');
+    });
+    tutIndex++;
+    if(tutIndex>=tutPool.length*2){ // 循环两遍后进入下一阶段
+      tutPhase=1;tutPool=[7,8,9,10];timeLeft=100; // 1分40秒练习
+      buildButtons(tutPool);
+      gameOver=false;hits=0;misses=0;combo=0;plane=null;bombs=[];
+      spawnTimer=0;
+      document.getElementById('timer-fill').style.width='100%';
+      document.getElementById('lv-note-range').textContent='练习: 中音 1~4';
+    }
+  }else{tutTimer--;}
+}
+
+function tutPracticePhase(){
+  timeLeft-=1/60;
+  document.getElementById('timer-fill').style.width=Math.max(0,(timeLeft/100)*100)+'%';
+  if(timeLeft<=0){tutPhase=2;tutTimer=0;curNote=-1;plane=null;bombs=[];document.querySelectorAll('.btn').forEach(b=>b.classList.remove('correct'));document.getElementById('lv-note-range').textContent='认识炸弹!';return;}
+
+  if(!plane){
+    spawnTimer++;
+    if(spawnTimer>=160){spawnTimer=0; // 超慢速
+      const ni=tutPool[Math.floor(Math.random()*tutPool.length)];
+      curNote=ni;
+      const sy=nY(NOTES[ni].yu)+(Math.random()-0.5)*30;
+      plane={x:-60,y:sy,targetY:nY(NOTES[ni].yu),speed:0.6,tilt:0,alive:true,ni};
+    }
+  }
+  if(plane&&plane.alive){plane.x+=plane.speed;const d=plane.targetY-plane.y;plane.y+=d*0.03;plane.tilt=d*0.005;if(plane.x>GW+80){misses++;combo=0;plane.alive=false;plane=null;updateHUD();spawnTimer=0;}}
+  for(const p of pts){p.x+=p.vx;p.y+=p.vy;p.life-=0.04;}pts=pts.filter(p=>p.life>0);
+}
+
+function tutBombPhase(){
+  tutTimer++;
+  if(tutTimer===1){
+    // 显示一个炸弹
+    curNote=7; // C3
+    bombs=[{x:GW*0.6,y:nY(NOTES[7].yu),speed:0,alive:true}];
+    document.getElementById('lv-note-range').textContent='这是炸弹💣 碰到会扣分!';
+  }
+  if(tutTimer>200){ // ~3秒后, 开始有炸弹的练习
+    tutPhase=3;tutTimer=0;
+    timeLeft=40;
+    bombs=[];plane=null;curNote=-1;hits=0;misses=0;
+    document.getElementById('lv-note-range').textContent='最终试炼: 注意躲避炸弹!';
+    document.getElementById('timer-fill').style.width='100%';
+    spawnTimer=0;
+    // 最终练习用炸弹
+    requestAnimationFrame(tutFinalLoop);
+    return;
+  }
+}
+
+function tutFinalLoop(){
+  fc++;
+  timeLeft-=1/60;
+  document.getElementById('timer-fill').style.width=Math.max(0,(timeLeft/40)*100)+'%';
+  if(timeLeft<=0){tutFinish();return;}
+
+  if(!plane){
+    spawnTimer++;
+    if(spawnTimer>=130){
+      spawnTimer=0;
+      const ni=tutPool[Math.floor(Math.random()*tutPool.length)];
+      curNote=ni;
+      plane={x:-60,y:nY(NOTES[ni].yu)+(Math.random()-0.5)*30,targetY:nY(NOTES[ni].yu),speed:0.8,tilt:0,alive:true,ni};
+      if(Math.random()<0.35)bombs.push({x:GW+40,y:nY(NOTES[Math.floor(Math.random()*tutPool.length)].yu),speed:1.2,alive:true});
+    }
+  }
+  if(plane&&plane.alive){plane.x+=plane.speed;const d=plane.targetY-plane.y;plane.y+=d*0.03;plane.tilt=d*0.005;if(plane.x>GW+80){misses++;combo=0;plane.alive=false;plane=null;updateHUD();spawnTimer=0;}}
+  for(const b of bombs){if(b.alive){b.x-=b.speed;if(b.x<-40)b.alive=false;}}bombs=bombs.filter(b=>b.alive);
+  for(const p of pts){p.x+=p.vx;p.y+=p.vy;p.life-=0.04;}pts=pts.filter(p=>p.life>0);
+  
+  gctx.clearRect(0,0,GW,GH);
+  drawStaff();for(const b of bombs){if(b.alive)drawBomb(b.x,b.y);}if(plane&&plane.alive)drawPlane(plane.x,plane.y,plane.tilt);drawPts();
+  gctx.fillStyle='rgba(0,0,0,0.5)';gctx.fillRect(0,0,GW,GH*0.15);
+  gctx.fillStyle='#ffd700';gctx.font='bold 14px sans-serif';gctx.textAlign='center';
+  gctx.fillText('最终试炼! 避开炸弹, 正确击中音符!',GW/2,GH*0.09);
+  requestAnimationFrame(tutFinalLoop);
+}
+
+function tutFinish(){
+  inTutorial=false;
+  document.getElementById('game-scene').style.display='none';
+  document.getElementById('map-wrap').style.display='';
+  document.getElementById('item-bar').style.display='';
+  document.getElementById('result-title').textContent='🏘️ 新手村毕业!';
+  document.getElementById('result-stars').textContent='🎓';
+  document.getElementById('res-hits').textContent=hits;
+  document.getElementById('res-misses').textContent=misses;
+  document.getElementById('res-maxcombo').textContent=maxCombo;
+  document.getElementById('res-rate').textContent=hits+misses>0?Math.round(hits/(hits+misses)*100)+'%':'--';
+  document.getElementById('res-gold').textContent='奖励: 🪙 +30 (通关新手村)';
+  gold+=30;saveP();
+  document.getElementById('result-overlay').style.display='flex';
+}
+
+// 教程中hit拦截
+function tutHit(noteIdx){
+  if(tutPhase===0)return; // 示范阶段(tutPhase=0)自动演示不响应点击
+  if(!plane||!plane.alive)return;
+  iAudio();plane.alive=false;
+  if(noteIdx===curNote){hits++;combo++;if(combo>maxCombo)maxCombo=combo;playTone(NOTES[noteIdx].freq,0.35);explode(plane.x,plane.y,'#2ecc71',12);document.querySelectorAll('.btn').forEach(b=>{if(parseInt(b.dataset.note)===noteIdx){b.classList.add('correct');setTimeout(()=>b.classList.remove('correct'),200);}});}
+  else{misses++;combo=0;playTone(150,0.2,'sawtooth');explode(plane.x,plane.y,'#e74c3c',8);document.querySelectorAll('.btn').forEach(b=>{if(parseInt(b.dataset.note)===noteIdx){b.classList.add('wrong');setTimeout(()=>b.classList.remove('wrong'),200);}});}
+  plane=null;updateHUD();spawnTimer=0;
+}
+function buildButtons(pool){
+  const container=document.getElementById('btns');container.innerHTML='';
+  // 分组: 负数(-1~-7)一排, 非负(1~7,+1,+2)一排
+  const neg=[],pos=[];
+  for(const ni of pool){if(ni<=6)neg.push(ni);else pos.push(ni);}
+  neg.sort((a,b)=>a-b);pos.sort((a,b)=>a-b);
+  for(const group of [neg,pos]){
+    if(!group.length)continue;
+    const rowDiv=document.createElement('div');rowDiv.className='btn-row';
+    if(group===neg)rowDiv.style.marginBottom='6px';
+    for(const ni of group){
+      const n=NOTES[ni];const btn=document.createElement('button');btn.className='btn';
+      btn.dataset.note=ni;
+      btn.textContent=n.id;
+      btn.addEventListener('click',e=>{e.preventDefault();hit(parseInt(btn.dataset.note));});
+      rowDiv.appendChild(btn);
+    }
+    container.appendChild(rowDiv);
+  }
+}
+
+// ═══════════ 游戏状态 ═══════════
+let curLv=1,hits=0,misses=0,combo=0,maxCombo=0,fc=0;
+let plane=null,curNote=-1,bombs=[],pts=[],timeLeft=0,gameOver=false;
+let spawnTimer=0,spawnInt=0,bombTimer=0,bombLimit=0,tInterval=null,pool=[];
+let shieldActive=false,fireworkActive=false;
+
+function spawnPlane(){
+  if(gameOver||fireworkActive)return;
+  let ni;
+  if(curLv>50){
+    // 重点音符(-1/-4/2/6, 索引0,3,8,12)加权: 加入3份副本到抽选池
+    const KEY=[0,3,8,12];const wPool=[...pool];
+    for(const k of KEY)if(pool.includes(k))wPool.push(k,k,k);
+    ni=wPool[Math.floor(Math.random()*wPool.length)];
+  }else{
+    ni=pool[Math.floor(Math.random()*pool.length)];
+  }
+  curNote=ni;const sy=nY(NOTES[ni].yu)+(Math.random()-0.5)*40;
+  plane={x:-60,y:sy,targetY:nY(NOTES[ni].yu),speed:planeSpeed(curLv),tilt:0,alive:true,ni};
+  if(hasBombTimer(curLv)){bombTimer=bombLimit;}
+  if(Math.random()<bombChance(curLv)){const offset=(Math.random()-0.5)*4;const bY=Math.max(-1,Math.min(6.5,NOTES[ni].yu+offset));bombs.push({x:GW+40,y:nY(bY),speed:planeSpeed(curLv)*1.4,alive:true});}
+}
+function hit(noteIdx){
+  // 新手村模式下转发
+  if(inTutorial)return tutHit(noteIdx);
+  if(gameOver||!plane||!plane.alive||fireworkActive)return;
+  iAudio();plane.alive=false;
+  if(noteIdx===curNote){hits++;combo++;if(combo>maxCombo)maxCombo=combo;playTone(NOTES[noteIdx].freq,0.35);if(combo>=3)setTimeout(()=>playCombo(Math.min(combo,7)),180);explode(plane.x,plane.y,'#2ecc71',18);if(combo>=3){const t=['','','神枪手!','无敌!','大师!','传奇!'];popup(t[Math.min(combo,5)]||'传说!!');}document.querySelectorAll('.btn').forEach(b=>{if(parseInt(b.dataset.note)===noteIdx){b.classList.add('correct');setTimeout(()=>b.classList.remove('correct'),200);}});}
+  else{misses++;combo=0;playTone(150,0.2,'sawtooth');explode(plane.x,plane.y,'#e74c3c',10);popup('❌');document.querySelectorAll('.btn').forEach(b=>{if(parseInt(b.dataset.note)===noteIdx){b.classList.add('wrong');setTimeout(()=>b.classList.remove('wrong'),200);}});}
+  plane=null;updateHUD();spawnTimer=0;
+}
+function missPlane(){if(gameOver)return;misses++;combo=0;if(plane)plane.alive=false;plane=null;updateHUD();spawnTimer=0;}
+function updateHUD(){document.getElementById('hits').textContent=hits;document.getElementById('misses').textContent=misses;document.getElementById('combo').textContent=combo;}
+function updateItemUI(){document.getElementById('cnt-shield').textContent=inventory.shield;document.getElementById('cnt-jetpack').textContent=inventory.jetpack;document.getElementById('cnt-firework').textContent=inventory.firework;document.getElementById('item-shield').disabled=inventory.shield<=0||shieldActive;document.getElementById('item-jetpack').disabled=inventory.jetpack<=0;document.getElementById('item-firework').disabled=inventory.firework<=0||fireworkActive;}
+function useItem(type){
+  if(gameOver)return;
+  if(type==='shield'&&inventory.shield>0&&!shieldActive){inventory.shield--;shieldActive=true;saveP();updateItemUI();}
+  if(type==='jetpack'&&inventory.jetpack>0&&plane&&plane.alive){inventory.jetpack--;showHint();saveP();updateItemUI();}
+  if(type==='firework'&&inventory.firework>0&&!fireworkActive){inventory.firework--;triggerFirework();saveP();updateItemUI();}
+}
+function showHint(){
+  if(!plane||!plane.alive)return;const wrap=document.getElementById('game-canvas-wrap'),rect=wrap.getBoundingClientRect();const y=plane.y/GH*rect.height;const el=document.createElement('div');el.className='hint-arrow';el.textContent='👇';el.style.top=y-20+'px';el.style.left='50%';wrap.appendChild(el);setTimeout(()=>el.remove(),1200);
+}
+function triggerFirework(){
+  fireworkActive=true;for(const b of bombs)b.alive=false;bombs=[];
+  const wrap=document.getElementById('game-canvas-wrap');for(let i=0;i<3;i++){setTimeout(()=>{const jet=document.createElement('div');jet.className='fighter-jet';jet.textContent='✈️💥';jet.style.top=(20+i*25)+'%';wrap.appendChild(jet);setTimeout(()=>jet.remove(),1600);},i*300);}
+  for(let i=0;i<5;i++){setTimeout(()=>fireworkExplode(GW*(0.2+Math.random()*0.6),GH*(0.2+Math.random()*0.5)),i*400);}
+  hits++;if(plane){plane.alive=false;plane=null;}updateHUD();spawnTimer=0;setTimeout(()=>{fireworkActive=false;},2000);
+}
+
+function update(){
+  fc++;if(gameOver)return;if(fireworkActive){for(const p of pts){p.x+=p.vx;p.y+=p.vy;p.life-=0.04;}pts=pts.filter(p=>p.life>0);return;}
+  if(hasBombTimer(curLv)&&plane&&plane.alive){bombTimer-=1/60;const sec=Math.max(0,Math.ceil(bombTimer));document.getElementById('bomb-timer').style.display='';document.getElementById('bt-sec').textContent=sec;if(bombTimer<=0){missPlane();spawnTimer=0;bombTimer=0;}}else if(hasBombTimer(curLv)){document.getElementById('bomb-timer').style.display='none';}
+  if(!plane){spawnTimer++;if(spawnTimer>=spawnInt){spawnTimer=0;spawnPlane();}}
+  if(plane&&plane.alive){const p=plane;p.x+=p.speed;const d=p.targetY-p.y;p.y+=d*0.03;p.tilt=d*0.005;if(p.x>GW+80)missPlane();}
+  for(const b of bombs){if(b.alive){b.x-=b.speed;if(b.x<-40)b.alive=false;if(shieldActive&&plane&&plane.alive&&b.x>plane.x-40&&b.x<plane.x+40&&Math.abs(b.y-plane.y)<30){b.alive=false;shieldActive=false;explode(b.x,b.y,'#4dabf7',12);popup('🛡️');updateItemUI();}}}
+  bombs=bombs.filter(b=>b.alive);for(const p of pts){p.x+=p.vx;p.y+=p.vy;p.life-=0.04;}pts=pts.filter(p=>p.life>0);
+}
+function draw(){gctx.clearRect(0,0,GW,GH);drawStaff();for(const b of bombs){if(b.alive)drawBomb(b.x,b.y);}if(plane&&plane.alive)drawPlane(plane.x,plane.y,plane.tilt);drawPts();}
+function gLoop(){update();draw();if(!gameOver||fireworkActive)requestAnimationFrame(gLoop);}
+
+// ═══════════ 关卡控制 ═══════════
+function startLevel(lv){
+  curLv=lv;pool=notePool(lv);loadP();inTutorial=false;
+  document.getElementById('map-wrap').style.display='none';document.getElementById('game-scene').style.display='flex';
+  document.getElementById('lv-label').textContent=`第 ${lv} 关`;
+  document.getElementById('lv-note-range').textContent=notePoolLabel(lv)+` (${pool.length}音)`;
+  buildButtons(pool);resizeG();iAudio();
+  if(aCtx&&aCtx.state==='suspended')aCtx.resume();
+  hits=0;misses=0;combo=0;maxCombo=0;fc=0;plane=null;curNote=-1;bombs=[];pts=[];gameOver=false;shieldActive=false;fireworkActive=false;
+  spawnTimer=0;spawnInt=spawnInterval(lv);bombLimit=bombTimeLimit(lv);bombTimer=0;timeLeft=GAME_SEC;
+  updateHUD();updateItemUI();document.getElementById('timer-fill').style.width='100%';document.getElementById('bomb-timer').style.display='none';
+  if(tInterval)clearInterval(tInterval);
+  tInterval=setInterval(()=>{timeLeft--;document.getElementById('timer-fill').style.width=(timeLeft/GAME_SEC*100)+'%';if(timeLeft<=0)endLevel();},1000);
+  requestAnimationFrame(gLoop);
+}
+function endLevel(){
+  gameOver=true;if(tInterval){clearInterval(tInterval);tInterval=null;}document.getElementById('bomb-timer').style.display='none';
+  const t=hits+misses||1,r=hits/t;let s=0;if(r>=0.90)s=3;else if(r>=0.70)s=2;else if(r>=0.50)s=1;
+  if(s>(progress[curLv]||0)){progress[curLv]=s;saveP();if(s>=1)unlockNext(curLv);}
+  const earned=rewardGold(curLv,s);if(earned>0&&s===3){gold+=earned;saveP();}
+  document.getElementById('result-title').textContent=s>=3?'🎉 完美！':s>=1?'干得不错！':'继续加油！';
+  document.getElementById('result-stars').textContent='⭐⭐⭐'.slice(0,s*2)||'☆☆☆';
+  document.getElementById('res-hits').textContent=hits;document.getElementById('res-misses').textContent=misses;
+  document.getElementById('res-maxcombo').textContent=maxCombo;document.getElementById('res-rate').textContent=Math.round(r*100)+'%';
+  document.getElementById('res-gold').textContent=earned>0?`🪙 +${earned} 金币 (三星奖励)`:'';
+  document.getElementById('result-overlay').style.display='flex';
+}
+function closeResult(){document.getElementById('result-overlay').style.display='none';document.getElementById('game-scene').style.display='none';document.getElementById('map-wrap').style.display='';if(tInterval){clearInterval(tInterval);tInterval=null;}drawMap();}
+function quitGame(){gameOver=true;inTutorial=false;if(tInterval){clearInterval(tInterval);tInterval=null;}document.getElementById('game-scene').style.display='none';document.getElementById('map-wrap').style.display='';drawMap();}
+
+// ═══════════ 键盘输入 ═══════════
+document.addEventListener('keydown',e=>{
+  if(gameOver||!plane||!plane.alive||fireworkActive)return;
+  if(document.getElementById('game-scene').style.display==='none')return;
+  const btns=document.querySelectorAll('.btn:not(.locked)');
+  const k=parseInt(e.key);
+  if(k>=1&&k<=btns.length){hit(parseInt(btns[k-1].dataset.note));}
+});
+
+// ═══════════ 启动 ═══════════
+window.addEventListener('resize',()=>{if(document.getElementById('map-wrap').style.display!=='none'&&currentPlayer)drawMap();if(document.getElementById('game-scene').style.display!=='none')resizeG();});
+(function init(){
+  // 显示玩家选择提示，隐藏地图内容
+  document.getElementById('no-player-msg').style.display='block';
+  document.getElementById('map-canvas').style.display='none';
+  document.getElementById('map-bar').style.display='none';
+  document.getElementsByClassName('map-legend')[0].style.display='none';
+})();
+</script>
+</body>
+</html>
