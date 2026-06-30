@@ -217,7 +217,7 @@ function loadP(){
   try{const t=JSON.parse(localStorage.getItem(storageKey())||'{}');progress=t.p||{};gold=t.g||0;inventory=t.i||{shield:0,jetpack:0,firework:0};lastPlayed=t.lp||null;}catch(e){}
   // 首次进入：没有存档时，按玩家预设初始进度
   if(!progress[1]||Object.keys(progress).length===0){
-    const maxLv=currentPlayer==='S'?20:7;
+    const maxLv=currentPlayer==='S'?20:15;
     for(let i=1;i<=maxLv;i++)progress[i]=-1;
     progress[1]=-1; // 确保至少第1关解锁
     saveP();
