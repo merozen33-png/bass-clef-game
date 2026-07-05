@@ -248,6 +248,8 @@ function selectPlayer(p){
     for(let i=1;i<=30;i++)progress[i]=3;
     // 清除31关及以上可能残留的旧解锁记录
     for(const k of Object.keys(progress)){if(parseInt(k)>30)delete progress[k];}
+    // 30关三星 → 解锁31关
+    unlockNext(30);
     localStorage.setItem('bass_clef_B_fixed','1');
     saveP();
   }
