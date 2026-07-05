@@ -105,7 +105,7 @@ button{font-family:inherit;cursor:pointer}
   <canvas id="map-canvas"></canvas>
   <div class="map-legend">🔒未解锁 ⭐一星 ⭐⭐二星 ⭐⭐⭐三星 ｜ 点击关卡开始！</div>
   <div id="no-player-msg">👆 先点 S 或 B 选择你的账号</div>
-
+  <button style="position:fixed;bottom:8px;right:8px;padding:4px 8px;border:1px solid #333;border-radius:6px;background:transparent;color:#333;font-size:10px;z-index:50" onclick="unlockAll()">🔓</button>
 </div>
 
 <div id="shop-overlay">
@@ -212,37 +212,40 @@ const ITEM_PRICES={shield:50,jetpack:80,firework:300};
 let currentPlayer=null;
 let progress={},gold=0,inventory={shield:0,jetpack:0,firework:0},lastPlayed=null;
 function storageKey(){return 'bass_clef_'+currentPlayer;}
+function saveP(){if(!currentPlayer)return;const key=storageKey(),bk=key+'_bk';const data=JSON.stringify({p:progress,g:gold,i:inventory,l:lastPlayed});try{localStorage.setItem(key,data);const rb=localStorage.getItem(key);if(rb!==data){localStorage.removeItem(key);localStorage.setItem(key,data);}localStorage.setItem(bk,data);}catch(e){console.warn('save failed',e);}}
 function loadP(){
-  if(!currentPlayer){progress={};gold=0;inventory={shield:0,jetpack:0,firework:0};return;}
-  try{const t=JSON.parse(localStorage.getItem(storageKey())||'{}');progress=t.p||{};gold=t.g||0;inventory=t.i||{shield:0,jetpack:0,firework:0};lastPlayed=t.lp||null;}catch(e){}
+  if(!currentPlayer){progress={};gold=0;inventory={shield:0,jetpack:0,firework:0};lastPlayed=null;return;}
+  try{const raw=localStorage.getItem(storageKey())||localStorage.getItem(storageKey()+'_bk')||'{}';const t=JSON.parse(raw);progress=t.p||{};gold=t.g||0;inventory=t.i||{shield:0,jetpack:0,firework:0};lastPlayed=t.l||null;}catch(e){}
   // 首次进入：没有存档时，按玩家预设初始进度
   if(!progress[1]||Object.keys(progress).length===0){
-    const maxLv=currentPlayer==='S'?20:15;
+    const maxLv=currentPlayer==='S'?9:7;
     for(let i=1;i<=maxLv;i++)progress[i]=-1;
-    progress[1]=-1; // 确保至少第1关解锁
-    saveP();
+    progress[1]=-1;
+    lastPlayed=Date.now();saveP();
   }
   if(!progress[1])progress[1]=-1;
 }
-function saveP(){if(!currentPlayer)return;localStorage.setItem(storageKey(),JSON.stringify({p:progress,g:gold,i:inventory,lp:Date.now()}));}
-function restoreS(){
-  localStorage.setItem('bass_clef_S', JSON.stringify({
-    p:{1:-1,2:-1,3:-1,4:-1,5:-1,6:-1,7:-1,8:-1,9:-1,10:-1,11:-1,12:-1,13:-1,14:-1,15:-1,16:-1,17:-1,18:-1,19:-1,20:-1},
-    g:0, i:{shield:0,jetpack:0,firework:0}, lp:null
-  }));
-  if(currentPlayer==='S'){loadP();drawMap();}
-  alert('S 账号已恢复到初始进度 (第20关解锁)');
-}
 function selectPlayer(p){
   currentPlayer=p;loadP();
-  var lpText='';
-  if(lastPlayed){
-    var d=new Date(lastPlayed);
-    lpText=' ｜ 上次 '+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  // B进度修复：静默失败丢失17-30关 → 一次性恢复到30关全三星
+  if(p==='B'&&!localStorage.getItem('bass_clef_B_fixed')&&getMaxUnlocked()<=20){
+    for(let i=1;i<=30;i++)progress[i]=3;
+    localStorage.setItem('bass_clef_B_fixed','1');
+    saveP();
   }
+  // 记录本次登录时间
+  const prev=lastPlayed;
+  lastPlayed=Date.now();saveP();
   document.getElementById('pbtn-S').className='player-btn'+(p==='S'?' active':'');
   document.getElementById('pbtn-B').className='player-btn'+(p==='B'?' active':'');
-  document.getElementById('player-indicator').textContent='当前: '+p+' ｜ 🪙 '+gold+lpText;
+  const now=new Date(lastPlayed);
+  const ts=now.getMonth()+1+'/'+now.getDate()+' '+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  let info='当前: '+p+' ｜ 🪙 '+gold+' ｜ 本次 '+ts;
+  if(prev){
+    const pv=new Date(prev);
+    info+=' ｜ 上次 '+ (pv.getMonth()+1)+'/'+pv.getDate();
+  }
+  document.getElementById('player-indicator').textContent=info;
   document.getElementById('no-player-msg').style.display='none';
   document.getElementById('map-canvas').style.display='';
   document.getElementById('map-bar').style.display='';
@@ -299,17 +302,16 @@ function drawMap(){
   // 新手村点击区
   mcv._village={x:vx,y:vy,r:r*1.5};
   document.getElementById('gold-display').textContent=gold;
-  var lpText2='';
-  if(lastPlayed){
-    var d2=new Date(lastPlayed);
-    lpText2=' ｜ 上次 '+(d2.getMonth()+1)+'/'+d2.getDate()+' '+String(d2.getHours()).padStart(2,'0')+':'+String(d2.getMinutes()).padStart(2,'0');
-  }
-  document.getElementById('player-indicator').textContent=currentPlayer?'当前: '+currentPlayer+' ｜ 🪙 '+gold+lpText2:'';
+  document.getElementById('player-indicator').textContent=currentPlayer?'当前: '+currentPlayer+' ｜ 🪙 '+gold:'';
   document.getElementById('shop-btn').className='shop-btn'+(getMaxUnlocked()>=60?'':' locked');
   if(getMaxUnlocked()<60)document.getElementById('shop-btn').textContent='🔒 60关解锁';else document.getElementById('shop-btn').textContent='🏪 道具商城';
 }
 function getMaxUnlocked(){let m=1;for(const[k,v]of Object.entries(progress)){if(v===-1||v>0)m=Math.max(m,parseInt(k));}return m;}
-
+function unlockAll(){
+  for(let i=1;i<=TOTAL_LV;i++) progress[i]=-1;
+  gold=9999;inventory={shield:10,jetpack:10,firework:5};
+  saveP();drawMap();
+}
 mcv.addEventListener('click',e=>{
   if(!currentPlayer)return;
   const rect=mcv.getBoundingClientRect(),sx=mW/rect.width,sy=mH/rect.height,mx=(e.clientX-rect.left)*sx,my=(e.clientY-rect.top)*sy;
@@ -670,6 +672,8 @@ window.addEventListener('resize',()=>{if(document.getElementById('map-wrap').sty
   document.getElementById('map-bar').style.display='none';
   document.getElementsByClassName('map-legend')[0].style.display='none';
 })();
+window.addEventListener('beforeunload',()=>{saveP();});
+window.addEventListener('pagehide',()=>{saveP();});
 </script>
 </body>
 </html>
