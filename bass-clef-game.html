@@ -242,29 +242,25 @@ function loadP(){
 }
 function selectPlayer(p){
   currentPlayer=p;loadP();
-  // B进度修复：静默失败丢失17-30关 → 一次性恢复到30关全三星，并清除30关以上的残余数据
-  if(p==='B'&&!localStorage.getItem('bass_clef_B_fixed')&&getMaxUnlocked()===16){
+  // B进度修复：一次性恢复到30关全三星+解锁31关
+  if(p==='B'&&!localStorage.getItem('bass_clef_B_fixed')){
+    progress={};
     for(let i=1;i<=30;i++)progress[i]=3;
-    // 清除31关及以上可能残留的旧解锁记录
-    for(const k of Object.keys(progress)){if(parseInt(k)>30)delete progress[k];}
-    // 30关三星 → 解锁31关
-    unlockNext(30);
+    progress[31]=-1;
+    gold=0;inventory={shield:0,jetpack:0,firework:0};
+    lastPlayed=Date.now();
     localStorage.setItem('bass_clef_B_fixed','1');
     saveP();
   }
-  // S进度修复：数据串号污染 → 恢复到45关全三星，解锁46关
+  // S进度修复：一次性恢复到45关全三星+解锁46关
   if(p==='S'&&!localStorage.getItem('bass_clef_S_fixed')){
-    const keys=Object.keys(progress);
-    const hasHigh=keys.some(k=>parseInt(k)>=21);
-    const hasLow=progress[1]!==undefined||progress[2]!==undefined||progress[3]!==undefined;
-    // 两种污染模式：①串号(有高位缺低位) ②全解锁作弊(关卡数异常多)
-    if(keys.length>0 && ((hasHigh && !hasLow) || keys.length>=90)){
-      for(let i=1;i<=45;i++)progress[i]=3;
-      for(const k of Object.keys(progress)){if(parseInt(k)>46)delete progress[k];}
-      unlockNext(45);
-      localStorage.setItem('bass_clef_S_fixed','1');
-      saveP();
-    }
+    progress={};
+    for(let i=1;i<=45;i++)progress[i]=3;
+    progress[46]=-1;
+    gold=0;inventory={shield:0,jetpack:0,firework:0};
+    lastPlayed=Date.now();
+    localStorage.setItem('bass_clef_S_fixed','1');
+    saveP();
   }
   // 记录本次登录时间
   const prev=lastPlayed;
