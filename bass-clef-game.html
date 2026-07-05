@@ -93,8 +93,8 @@ button{font-family:inherit;cursor:pointer}
 
 <div id="map-wrap">
   <div id="player-bar">
-    <button class="player-btn" id="pbtn-S" onclick="selectPlayer('S')">S</button>
-    <button class="player-btn" id="pbtn-B" onclick="selectPlayer('B')">B</button>
+    <button class="player-btn" id="pbtn-S">S</button>
+    <button class="player-btn" id="pbtn-B">B</button>
   </div>
   <div id="player-indicator"></div>
   <h1>🗺️ 低音谱号大冒险</h1>
@@ -683,6 +683,38 @@ document.addEventListener('keydown',e=>{
 });
 
 // ═══════════ 启动 ═══════════
+function resetPlayer(p){
+  const k='bass_clef_'+p,bk=k+'_bk';
+  try{localStorage.removeItem(k);localStorage.removeItem(bk);localStorage.removeItem(k+'_fixed');}catch(e){}
+  // 如果当前选中该玩家，重新加载
+  if(currentPlayer===p){currentPlayer=null;selectPlayer(p);}
+  const btn=document.getElementById('pbtn-'+p);
+  btn.textContent='✓';btn.style.background='#2ecc71';btn.style.color='#fff';
+  setTimeout(()=>{btn.textContent=p;btn.style.background='';btn.style.color='';},1500);
+}
+
+// 长按重置 + 短按选择
+(function setupPlayerBtns(){
+  const timers={};
+  for(const p of ['S','B']){
+    const btn=document.getElementById('pbtn-'+p);
+    btn.addEventListener('pointerdown',e=>{
+      e.preventDefault();
+      timers[p]=setTimeout(()=>{resetPlayer(p);timers[p]=null;},3000);
+      btn.style.background='#e74c3c';btn.style.color='#fff';
+    });
+    btn.addEventListener('pointerup',e=>{
+      e.preventDefault();
+      btn.style.background='';btn.style.color='';
+      if(timers[p]){clearTimeout(timers[p]);timers[p]=null;selectPlayer(p);}
+    });
+    btn.addEventListener('pointerleave',e=>{
+      btn.style.background='';btn.style.color='';
+      if(timers[p]){clearTimeout(timers[p]);timers[p]=null;}
+    });
+  }
+})();
+
 window.addEventListener('resize',()=>{if(document.getElementById('map-wrap').style.display!=='none'&&currentPlayer)drawMap();if(document.getElementById('game-scene').style.display!=='none')resizeG();});
 (function init(){
   // 显示玩家选择提示，隐藏地图内容
