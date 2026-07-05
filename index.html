@@ -700,8 +700,22 @@ document.addEventListener('keydown',e=>{
 function resetPlayer(p){
   const k='bass_clef_'+p,bk=k+'_bk';
   try{localStorage.removeItem(k);localStorage.removeItem(bk);localStorage.removeItem(k+'_fixed');}catch(e){}
-  // 如果当前选中该玩家，重新加载
-  if(currentPlayer===p){currentPlayer=null;selectPlayer(p);}
+  // 恢复到正确进度
+  const target=p==='B'?30:45;
+  progress={};gold=0;inventory={shield:0,jetpack:0,firework:0};
+  for(let i=1;i<=target;i++)progress[i]=3;
+  progress[target+1]=-1;  // 解锁下一关
+  lastPlayed=Date.now();currentPlayer=p;
+  saveP();
+  localStorage.setItem('bass_clef_'+p+'_fixed','1');
+  document.getElementById('pbtn-S').className='player-btn'+(p==='S'?' active':'');
+  document.getElementById('pbtn-B').className='player-btn'+(p==='B'?' active':'');
+  document.getElementById('player-indicator').textContent='当前: '+p+' ｜ 🪙 0';
+  document.getElementById('no-player-msg').style.display='none';
+  document.getElementById('map-canvas').style.display='';
+  document.getElementById('map-bar').style.display='';
+  document.getElementsByClassName('map-legend')[0].style.display='';
+  drawMap();
   const btn=document.getElementById('pbtn-'+p);
   btn.textContent='✓';btn.style.background='#2ecc71';btn.style.color='#fff';
   setTimeout(()=>{btn.textContent=p;btn.style.background='';btn.style.color='';},1500);
