@@ -257,7 +257,8 @@ function selectPlayer(p){
     const keys=Object.keys(progress);
     const hasHigh=keys.some(k=>parseInt(k)>=21);
     const hasLow=progress[1]!==undefined||progress[2]!==undefined||progress[3]!==undefined;
-    if(keys.length>0 && hasHigh && !hasLow){
+    // 两种污染模式：①串号(有高位缺低位) ②全解锁作弊(关卡数异常多)
+    if(keys.length>0 && ((hasHigh && !hasLow) || keys.length>=90)){
       for(let i=1;i<=45;i++)progress[i]=3;
       for(const k of Object.keys(progress)){if(parseInt(k)>46)delete progress[k];}
       unlockNext(45);
