@@ -228,7 +228,7 @@ function loadP(){
 function selectPlayer(p){
   currentPlayer=p;loadP();
   // B进度修复：静默失败丢失17-30关 → 一次性恢复到30关全三星
-  if(p==='B'&&!localStorage.getItem('bass_clef_B_fixed')&&getMaxUnlocked()===16){
+  if(p==='B'&&!localStorage.getItem('bass_clef_B_fixed')&&getMaxUnlocked()<=20){
     for(let i=1;i<=30;i++)progress[i]=3;
     localStorage.setItem('bass_clef_B_fixed','1');
     saveP();
