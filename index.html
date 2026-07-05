@@ -212,24 +212,42 @@ const ITEM_PRICES={shield:50,jetpack:80,firework:300};
 let currentPlayer=null;
 let progress={},gold=0,inventory={shield:0,jetpack:0,firework:0},lastPlayed=null;
 function storageKey(){return 'bass_clef_'+currentPlayer;}
-function saveP(){if(!currentPlayer)return;const key=storageKey(),bk=key+'_bk';const data=JSON.stringify({p:progress,g:gold,i:inventory,l:lastPlayed});try{localStorage.setItem(key,data);const rb=localStorage.getItem(key);if(rb!==data){localStorage.removeItem(key);localStorage.setItem(key,data);}localStorage.setItem(bk,data);}catch(e){console.warn('save failed',e);}}
+function saveP(){if(!currentPlayer)return;const key=storageKey(),bk=key+'_bk';const data=JSON.stringify({p:progress,g:gold,i:inventory,l:lastPlayed});try{localStorage.setItem(key,data);localStorage.setItem(bk,data);}catch(e){console.warn('save failed',e);}}
 function loadP(){
   if(!currentPlayer){progress={};gold=0;inventory={shield:0,jetpack:0,firework:0};lastPlayed=null;return;}
-  try{const raw=localStorage.getItem(storageKey())||localStorage.getItem(storageKey()+'_bk')||'{}';const t=JSON.parse(raw);progress=t.p||{};gold=t.g||0;inventory=t.i||{shield:0,jetpack:0,firework:0};lastPlayed=t.l||null;}catch(e){}
+  // 先复位全局状态，防止上个玩家的数据残留
+  progress={};gold=0;inventory={shield:0,jetpack:0,firework:0};lastPlayed=null;
+  try{
+    const mainKey=storageKey(),bkKey=mainKey+'_bk';
+    let raw=localStorage.getItem(mainKey);
+    // 完整性检测：如果有高位关卡(>=10)但缺低位关卡(1-3)，数据可能被串号污染，尝试从备份恢复
+    if(raw){
+      try{
+        const t=JSON.parse(raw),p=t.p||{};
+        const hasHigh=Object.keys(p).some(k=>parseInt(k)>=10);
+        const hasLow=p[1]!==undefined||p[2]!==undefined||p[3]!==undefined;
+        if(hasHigh&&!hasLow){raw=localStorage.getItem(bkKey)||raw;console.warn('data corruption detected, trying backup');}
+      }catch(e){}
+    }
+    raw=raw||localStorage.getItem(bkKey)||'{}';
+    const t=JSON.parse(raw);
+    progress=t.p||{};gold=t.g||0;inventory=t.i||{shield:0,jetpack:0,firework:0};lastPlayed=t.l||null;
+  }catch(e){}
   // 首次进入：没有存档时，按玩家预设初始进度
-  if(!progress[1]||Object.keys(progress).length===0){
+  const keys=Object.keys(progress);
+  if(keys.length===0){
     const maxLv=currentPlayer==='S'?9:7;
     for(let i=1;i<=maxLv;i++)progress[i]=-1;
-    progress[1]=-1;
     lastPlayed=Date.now();saveP();
   }
-  if(!progress[1])progress[1]=-1;
 }
 function selectPlayer(p){
   currentPlayer=p;loadP();
-  // B进度修复：静默失败丢失17-30关 → 一次性恢复到30关全三星
-  if(p==='B'&&!localStorage.getItem('bass_clef_B_fixed')&&getMaxUnlocked()<=20){
+  // B进度修复：静默失败丢失17-30关 → 一次性恢复到30关全三星，并清除30关以上的残余数据
+  if(p==='B'&&!localStorage.getItem('bass_clef_B_fixed')&&getMaxUnlocked()===16){
     for(let i=1;i<=30;i++)progress[i]=3;
+    // 清除31关及以上可能残留的旧解锁记录
+    for(const k of Object.keys(progress)){if(parseInt(k)>30)delete progress[k];}
     localStorage.setItem('bass_clef_B_fixed','1');
     saveP();
   }
