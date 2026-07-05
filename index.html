@@ -252,6 +252,19 @@ function selectPlayer(p){
     localStorage.setItem('bass_clef_B_fixed','1');
     saveP();
   }
+  // S进度修复：数据串号污染 → 恢复到45关全三星，解锁46关
+  if(p==='S'&&!localStorage.getItem('bass_clef_S_fixed')){
+    const keys=Object.keys(progress);
+    const hasHigh=keys.some(k=>parseInt(k)>=21);
+    const hasLow=progress[1]!==undefined||progress[2]!==undefined||progress[3]!==undefined;
+    if(keys.length>0 && hasHigh && !hasLow){
+      for(let i=1;i<=45;i++)progress[i]=3;
+      for(const k of Object.keys(progress)){if(parseInt(k)>46)delete progress[k];}
+      unlockNext(45);
+      localStorage.setItem('bass_clef_S_fixed','1');
+      saveP();
+    }
+  }
   // 记录本次登录时间
   const prev=lastPlayed;
   lastPlayed=Date.now();saveP();
