@@ -242,25 +242,36 @@ function loadP(){
 }
 function selectPlayer(p){
   currentPlayer=p;loadP();
-  // B进度修复：一次性恢复到30关全三星+解锁31关
-  if(p==='B'&&!localStorage.getItem('bass_clef_B_fixed')){
-    progress={};
-    for(let i=1;i<=30;i++)progress[i]=3;
-    progress[31]=-1;
-    gold=0;inventory={shield:0,jetpack:0,firework:0};
-    lastPlayed=Date.now();
-    localStorage.setItem('bass_clef_B_fixed','1');
-    saveP();
+  // B进度修复
+  if(p==='B'){
+    if(!localStorage.getItem('bass_clef_B_fixed')){
+      progress={};
+      for(let i=1;i<=30;i++)progress[i]=3;
+      progress[31]=-1;
+      gold=0;inventory={shield:0,jetpack:0,firework:0};
+      lastPlayed=Date.now();
+      localStorage.setItem('bass_clef_B_fixed','1');
+      saveP();
+    }else if(!(31 in progress)){
+      // 旧版修复遗漏：标记已设但31关缺失 → 补上
+      progress[31]=-1;
+      saveP();
+    }
   }
-  // S进度修复：一次性恢复到45关全三星+解锁46关
-  if(p==='S'&&!localStorage.getItem('bass_clef_S_fixed')){
-    progress={};
-    for(let i=1;i<=45;i++)progress[i]=3;
-    progress[46]=-1;
-    gold=0;inventory={shield:0,jetpack:0,firework:0};
-    lastPlayed=Date.now();
-    localStorage.setItem('bass_clef_S_fixed','1');
-    saveP();
+  // S进度修复
+  if(p==='S'){
+    if(!localStorage.getItem('bass_clef_S_fixed')){
+      progress={};
+      for(let i=1;i<=45;i++)progress[i]=3;
+      progress[46]=-1;
+      gold=0;inventory={shield:0,jetpack:0,firework:0};
+      lastPlayed=Date.now();
+      localStorage.setItem('bass_clef_S_fixed','1');
+      saveP();
+    }else if(!(46 in progress)){
+      progress[46]=-1;
+      saveP();
+    }
   }
   // 记录本次登录时间
   const prev=lastPlayed;
