@@ -248,15 +248,13 @@ function selectPlayer(p){
   // B进度修复：不覆盖已有进度，只补缺
   if(p==='B'){
     if(!localStorage.getItem('bass_clef_B_fixed')){
-      // 仅补全1-30关(已有进度不动)，解锁31关
-      for(let i=1;i<=30;i++){if(!(i in progress)||progress[i]<3)progress[i]=3;}
-      if(!(31 in progress))progress[31]=-1;
-      // 清除污染数据：超过31关的旧残余
-      for(const k of Object.keys(progress)){if(parseInt(k)>31)delete progress[k];}
+      for(let i=1;i<=35;i++){if(!(i in progress)||progress[i]<3)progress[i]=3;}
+      if(!(36 in progress))progress[36]=-1;
+      for(const k of Object.keys(progress)){if(parseInt(k)>36)delete progress[k];}
       localStorage.setItem('bass_clef_B_fixed','1');
       saveP();
-    }else if(!(31 in progress)){
-      progress[31]=-1;
+    }else if(!(36 in progress)){
+      progress[36]=-1;
       saveP();
     }
   }
@@ -710,7 +708,7 @@ function resetPlayer(p){
   try{const r=indexedDB.open('bass_clef_db',1);r.onsuccess=()=>{r.result.transaction('saves','readwrite').objectStore('saves').delete(k);};}catch(e2){}
   }catch(e){}
   // 恢复到正确进度
-  const target=p==='B'?30:45;
+  const target=p==='B'?35:45;
   progress={};gold=0;inventory={shield:0,jetpack:0,firework:0};
   for(let i=1;i<=target;i++)progress[i]=3;
   progress[target+1]=-1;  // 解锁下一关
