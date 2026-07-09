@@ -101,6 +101,8 @@ button{font-family:inherit;cursor:pointer}
   <div id="map-bar">
     <span class="gold">🪙 <span id="gold-display">0</span></span>
     <button id="shop-btn" onclick="openShop()">🏪 道具商城</button>
+    <button id="sync-btn" onclick="exportProgress()" style="padding:4px 8px;border:1px solid #4a8ad4;border-radius:6px;background:transparent;color:#4a8ad4;font-size:11px">📤导出</button>
+    <button id="import-btn" onclick="importProgress()" style="padding:4px 8px;border:1px solid #8ac4ff;border-radius:6px;background:transparent;color:#8ac4ff;font-size:11px">📥导入</button>
   </div>
   <canvas id="map-canvas"></canvas>
   <div class="map-legend">🔒未解锁 ⭐一星 ⭐⭐二星 ⭐⭐⭐三星 ｜ 点击关卡开始！</div>
@@ -212,6 +214,28 @@ let currentPlayer=null;
 let progress={},gold=0,inventory={shield:0,jetpack:0,firework:0},lastPlayed=null;
 function storageKey(){return 'bass_clef_'+currentPlayer;}
 function saveP(){if(!currentPlayer)return;const key=storageKey(),bk=key+'_bk';const data=JSON.stringify({p:progress,g:gold,i:inventory,l:lastPlayed});try{localStorage.setItem(key,data);localStorage.setItem(bk,data);}catch(e){console.warn('save failed',e);}}
+// 跨域进度迁移：导出/导入
+function exportProgress(){
+  if(!currentPlayer)return;
+  const data={p:progress,g:gold,i:inventory,l:lastPlayed,player:currentPlayer};
+  const s=JSON.stringify(data);
+  // 复制到剪贴板
+  if(navigator.clipboard){navigator.clipboard.writeText(s).then(()=>alert('✅ '+currentPlayer+' 进度已复制到剪贴板! 粘贴到新设备导入即可。'));}
+  else{prompt('复制以下内容，在新设备上粘贴导入：',s);}
+}
+function importProgress(){
+  const s=prompt('粘贴进度数据：');
+  if(!s)return;
+  try{
+    const d=JSON.parse(s);
+    if(!d.player||!d.p){alert('数据格式错误');return;}
+    currentPlayer=d.player;
+    progress=d.p;gold=d.g||0;inventory=d.i||{shield:0,jetpack:0,firework:0};lastPlayed=d.l;
+    saveP();
+    alert('✅ '+d.player+' 进度已恢复!');
+    drawMap();
+  }catch(e){alert('导入失败：'+e.message);}
+}
 function loadP(){
   if(!currentPlayer){progress={};gold=0;inventory={shield:0,jetpack:0,firework:0};lastPlayed=null;return;}
   // 先复位全局状态，防止上个玩家的数据残留
