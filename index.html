@@ -211,10 +211,7 @@ const ITEM_PRICES={shield:50,jetpack:80,firework:300};
 let currentPlayer=null;
 let progress={},gold=0,inventory={shield:0,jetpack:0,firework:0},lastPlayed=null;
 function storageKey(){return 'bass_clef_'+currentPlayer;}
-function saveP(){if(!currentPlayer)return;const key=storageKey(),bk=key+'_bk';const data=JSON.stringify({p:progress,g:gold,i:inventory,l:lastPlayed});try{localStorage.setItem(key,data);localStorage.setItem(bk,data);}catch(e){console.warn('save failed',e);
-  // localStorage失败时尝试indexedDB兜底
-  try{const r=indexedDB.open('bass_clef_db',1);r.onupgradeneeded=()=>{r.result.createObjectStore('saves');};r.onsuccess=()=>{const t=r.result.transaction('saves','readwrite');t.objectStore('saves').put(data,key);};}catch(e2){}
-}}
+function saveP(){if(!currentPlayer)return;const key=storageKey(),bk=key+'_bk';const data=JSON.stringify({p:progress,g:gold,i:inventory,l:lastPlayed});try{localStorage.setItem(key,data);localStorage.setItem(bk,data);}catch(e){console.warn('save failed',e);}}
 function loadP(){
   if(!currentPlayer){progress={};gold=0;inventory={shield:0,jetpack:0,firework:0};lastPlayed=null;return;}
   // 先复位全局状态，防止上个玩家的数据残留
@@ -245,12 +242,14 @@ function loadP(){
 }
 function selectPlayer(p){
   currentPlayer=p;loadP();
-  // B进度修复：不覆盖已有进度，只补缺
+  // B进度修复
   if(p==='B'){
     if(!localStorage.getItem('bass_clef_B_fixed')){
-      for(let i=1;i<=35;i++){if(!(i in progress)||progress[i]<3)progress[i]=3;}
-      if(!(36 in progress))progress[36]=-1;
-      for(const k of Object.keys(progress)){if(parseInt(k)>36)delete progress[k];}
+      progress={};
+      for(let i=1;i<=35;i++)progress[i]=3;
+      progress[36]=-1;
+      gold=0;inventory={shield:0,jetpack:0,firework:0};
+      lastPlayed=Date.now();
       localStorage.setItem('bass_clef_B_fixed','1');
       saveP();
     }else if(!(36 in progress)){
@@ -258,12 +257,14 @@ function selectPlayer(p){
       saveP();
     }
   }
-  // S进度修复：不覆盖已有进度，只补缺
+  // S进度修复
   if(p==='S'){
     if(!localStorage.getItem('bass_clef_S_fixed')){
-      for(let i=1;i<=45;i++){if(!(i in progress)||progress[i]<3)progress[i]=3;}
-      if(!(46 in progress))progress[46]=-1;
-      for(const k of Object.keys(progress)){if(parseInt(k)>46)delete progress[k];}
+      progress={};
+      for(let i=1;i<=45;i++)progress[i]=3;
+      progress[46]=-1;
+      gold=0;inventory={shield:0,jetpack:0,firework:0};
+      lastPlayed=Date.now();
       localStorage.setItem('bass_clef_S_fixed','1');
       saveP();
     }else if(!(46 in progress)){
@@ -704,9 +705,7 @@ document.addEventListener('keydown',e=>{
 // ═══════════ 启动 ═══════════
 function resetPlayer(p){
   const k='bass_clef_'+p,bk=k+'_bk';
-  try{localStorage.removeItem(k);localStorage.removeItem(bk);localStorage.removeItem(k+'_fixed');
-  try{const r=indexedDB.open('bass_clef_db',1);r.onsuccess=()=>{r.result.transaction('saves','readwrite').objectStore('saves').delete(k);};}catch(e2){}
-  }catch(e){}
+  try{localStorage.removeItem(k);localStorage.removeItem(bk);localStorage.removeItem(k+'_fixed');}catch(e){}
   // 恢复到正确进度
   const target=p==='B'?35:45;
   progress={};gold=0;inventory={shield:0,jetpack:0,firework:0};
@@ -760,17 +759,6 @@ window.addEventListener('resize',()=>{if(document.getElementById('map-wrap').sty
 })();
 window.addEventListener('beforeunload',()=>{saveP();});
 window.addEventListener('pagehide',()=>{saveP();});
-// 启动时从IndexedDB恢复数据到localStorage(iPad Safari更可靠)
-(function restoreFromIDB(){
-  try{const r=indexedDB.open('bass_clef_db',1);
-  r.onupgradeneeded=()=>{r.result.createObjectStore('saves');};
-  r.onsuccess=()=>{const t=r.result.transaction('saves','readonly');const s=t.objectStore('saves');
-    ['bass_clef_B','bass_clef_S'].forEach(k=>{
-      const req=s.get(k);
-      req.onsuccess=()=>{if(req.result&&!localStorage.getItem(k)){localStorage.setItem(k,req.result);}};
-    });
-  };}catch(e){}
-})();
 </script>
 </body>
 </html>
